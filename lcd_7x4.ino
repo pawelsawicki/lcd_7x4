@@ -1,8 +1,10 @@
-#define  DIGITS    4
-#define  NUMBERS   10
-#define  SEGMENTS  7
+#include <Time.h>
 
-const byte numbers[] = {
+#define  SECTORS    4
+#define  SEGMENTS   7
+#define  DIGITS     10
+
+const byte digits[] = {
   B00111111,
   B00000110,
   B01011011,
@@ -22,9 +24,11 @@ const int clockPin = 12;
 //// Pin connected to Data in (DS) of 74HC595
 const int dataPin  = 11;
 //// Pin connected to display's common annode
-const int digits[DIGITS] = { 6, 5, 9, 3 };
+const int sectors[SECTORS] = { 6, 5, 9, 3 };
 
-const int message[DIGITS] = { 1, 2, 3, 4 };
+int message[SECTORS];
+
+int counter = 0;
  
 /////////////////////////////////////////////////////////////////////////////////
 //
@@ -34,19 +38,21 @@ void setup()
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin,  OUTPUT);
   
-  for (int digit = 0; digit < DIGITS; digit++)
-    pinMode(digits[digit], OUTPUT);
+  for (int __sector = 0; __sector < SECTORS; __sector++)
+    pinMode(sectors[__sector], OUTPUT);
 }
  
 /////////////////////////////////////////////////////////////////////////////////
 //
 void loop()
 {
+  
+  /*
   for (int digit = 0; digit < DIGITS; digit++) {
     for (int segment = 0; segment < SEGMENTS; segment++) {
       displayOff();
       
-      byte bitsToSend = numbers[message[digit]];
+      byte bitsToSend = digits[message[digit]];
       
       bitsToSend = bitsToSend & (B00000001 << segment); // top row
    
@@ -64,18 +70,37 @@ void loop()
       delayMicroseconds(500);
     }
   }
+  */
+
+  counter = millis()/1000;
+
+  message[3] = counter % 10;
+  message[2] = (counter / 10 ) % 10;
+  message[1] = (counter / 100 ) % 10;
+  message[0] = (counter / 1000 ) % 10;
+  
+  for (int __sector = 0; __sector < SECTORS; __sector++) {
+    displayUpdate(__sector);
+    delay(2);
+  }
 }
 
-void displayOff() {
-  for (int digit = 0; digit < DIGITS; digit++)
-    digitalWrite(digits[digit], LOW);
-}
+void displayUpdate(int sector) {
+  for (int __sector = 0; __sector < SECTORS; __sector++) {
+    digitalWrite(sectors[__sector], LOW);
 
-void displayOn(int digit) {
-  if (digit == -1)
-      for (int ii = 0; ii < DIGITS; ii++)
-        digitalWrite(digits[ii], HIGH);
-  else
-    digitalWrite(digits[digit], HIGH);
-}
+/*
+    digitalWrite(latchPin, LOW);
+    digitalWrite(latchPin, HIGH);
+ 
+    delayMicroseconds(100);
+*/
 
+    digitalWrite(latchPin, LOW);
+    shiftOut(dataPin, clockPin, MSBFIRST, ~B00000000);
+    shiftOut(dataPin, clockPin, MSBFIRST, ~digits[message[sector]]);
+    digitalWrite(latchPin, HIGH);
+
+    digitalWrite(sectors[sector], HIGH);
+  }
+}
